@@ -1,0 +1,54 @@
+// --- Pin setup ---
+const int numSensors = 5;
+const int sensorPins[numSensors] = {A0, A1, A2, A3, A4};
+
+// --- Filtering parameters ---
+const int samplesAvg = 8;
+float ema[numSensors];
+int baseline[numSensors];
+const float alpha = 0.15;   // smoothing
+
+void setup() {
+  Serial.begin(115200);
+
+  Serial.println("Calibration: leave sensors untouched...");
+  delay(2000);
+
+  for (int i = 0; i < numSensors; i++) {
+    baseline[i] = readAverage(sensorPins[i], samplesAvg * 10);
+    ema[i] = baseline[i];
+
+    Serial.print("Baseline");
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.println(baseline[i]);
+  }
+}
+
+void loop() {
+  for (int i = 0; i < numSensors; i++) {
+    int raw = readAverage(sensorPins[i], samplesAvg);
+    ema[i] = alpha * raw + (1 - alpha) * ema[i];
+    float rel = ema[i] - baseline[i];
+    if (rel < 0) rel = 0;
+
+    Serial.print("Rel");
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.print(rel, 1);
+    Serial.print("   ");
+  }
+  Serial.println();
+
+  delay(50); // ~20 Hz
+}
+
+// --- Averaging function ---
+int readAverage(int pin, int n) {
+  long sum = 0;
+  for (int i = 0; i < n; i++) {
+    sum += analogRead(pin);
+    delay(5);
+  }
+  return int(sum / n);
+}
